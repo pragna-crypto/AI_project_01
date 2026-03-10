@@ -1,0 +1,71 @@
+Performing system checks...
+
+D:\pragna_repose\AI_project_01\env\Lib\site-packages\pydub\utils.py:170: RuntimeWarning: Couldn't find ffmpeg or avconv - defaulting to ffmpeg, but may not work
+  warn("Couldn't find ffmpeg or avconv - defaulting to ffmpeg, but may not work", RuntimeWarning)
+System check identified some issues:
+
+WARNINGS:
+?: (staticfiles.W004) The directory 'D:\pragna_repose\AI_project_01\ai_speech_analyzer\analyzer/static' in the STATICFILES_DIRS setting does not exist.
+
+System check identified 1 issue (0 silenced).
+March 09, 2026 - 21:43:23
+Django version 6.0.3, using settings 'ai_speech_analyzer.settings'
+Starting development server at http://127.0.0.1:8000/
+Quit the server with CTRL-BREAK.
+
+WARNING: This is a development server. Do not use it in a production setting. Use a production WSGI or ASGI server instead.
+For more information on production servers see: https://docs.djangoproject.com/en/6.0/howto/deployment/
+Traceback (most recent call last):
+  File "D:\pragna_repose\AI_project_01\env\Lib\site-packages\django\core\management\commands\runserver.py", line 144, in inner_run
+    run(
+    ~~~^
+        self.addr,
+        ^^^^^^^^^^
+    ...<5 lines>...
+        server_cls=self.server_cls,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\pragna_repose\AI_project_01\env\Lib\site-packages\django\core\servers\basehttp.py", line 277, in run
+    httpd.serve_forever()
+    ~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\prajw\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 235, in serve_forever
+    ready = selector.select(poll_interval)
+  File "C:\Users\prajw\AppData\Local\Python\pythoncore-3.14-64\Lib\selectors.py", line 314, in select
+    r, w, _ = self._select(self._readers, self._writers, [], timeout)
+              ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\prajw\AppData\Local\Python\pythoncore-3.14-64\Lib\selectors.py", line 305, in _select
+    r, w, x = select.select(r, w, w, timeout)
+              ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\pragna_repose\AI_project_01\ai_speech_analyzer\debug.py", line 9, in <module>
+    execute_from_command_line(['manage.py', 'runserver', '--noreload'])
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\pragna_repose\AI_project_01\env\Lib\site-packages\django\core\management\__init__.py", line 443, in execute_from_command_line
+    utility.execute()
+    ~~~~~~~~~~~~~~~^^
+  File "D:\pragna_repose\AI_project_01\env\Lib\site-packages\django\core\management\__init__.py", line 437, in execute
+    self.fetch_command(subcommand).run_from_argv(self.argv)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "D:\pragna_repose\AI_project_01\env\Lib\site-packages\django\core\management\base.py", line 420, in run_from_argv
+    self.execute(*args, **cmd_options)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\pragna_repose\AI_project_01\env\Lib\site-packages\django\core\management\commands\runserver.py", line 69, in execute
+    super().execute(*args, **options)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "D:\pragna_repose\AI_project_01\env\Lib\site-packages\django\core\management\base.py", line 464, in execute
+    output = self.handle(*args, **options)
+  File "D:\pragna_repose\AI_project_01\env\Lib\site-packages\django\core\management\commands\runserver.py", line 110, in handle
+    self.run(**options)
+    ~~~~~~~~^^^^^^^^^^^
+  File "D:\pragna_repose\AI_project_01\env\Lib\site-packages\django\core\management\commands\runserver.py", line 119, in run
+    self.inner_run(None, **options)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "D:\pragna_repose\AI_project_01\env\Lib\site-packages\django\core\management\commands\runserver.py", line 170, in inner_run
+    sys.exit(0)
+    ~~~~~~~~^^^
+SystemExit: 0

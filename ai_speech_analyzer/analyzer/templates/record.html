@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white text-center">
+                <h3>Record or Upload Speech</h3>
+            </div>
+            <div class="card-body">
+                <ul class="nav nav-tabs" id="myTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="record-tab" data-bs-toggle="tab" data-bs-target="#record"
+                            type="button" role="tab">Record Audio</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="upload-tab" data-bs-toggle="tab" data-bs-target="#upload"
+                            type="button" role="tab">Upload File</button>
+                    </li>
+                </ul>
+                <div class="tab-content mt-4" id="myTabContent">
+                    <!-- Record Tab -->
+                    <div class="tab-pane fade show active text-center" id="record" role="tabpanel">
+                        <p>Click "Start Recording" to begin speaking. Click "Stop Recording" when you are finished.</p>
+                        <button id="start-btn" class="btn btn-success btn-lg mx-2">Start Recording</button>
+                        <button id="stop-btn" class="btn btn-danger btn-lg mx-2" disabled>Stop Recording</button>
+
+                        <div class="mt-4">
+                            <audio id="audio-playback" controls class="d-none w-100"></audio>
+                        </div>
+
+                        <form id="record-form" method="POST" enctype="multipart/form-data" class="mt-4 d-none">
+                            {% csrf_token %}
+                            <input type="file" id="blob-file" name="uploaded_file" class="d-none">
+                            <button type="submit" class="btn btn-primary btn-lg w-100">Analyze Recording</button>
+                        </form>
+                    </div>
+
+                    <!-- Upload Tab -->
+                    <div class="tab-pane fade" id="upload" role="tabpanel">
+                        <form method="POST" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label for="id_uploaded_file" class="form-label">Upload Audio/Video File</label>
+                                {{ form.uploaded_file }}
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-lg w-100">Analyze Uploaded Speech</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let mediaRecorder;
+    let audioChunks = [];
+
+    const startBtn = document.getElementById('start-btn');
+    const stopBtn = document.getElementById('stop-btn');
+    const audioPlayback = document.getElementById('audio-playback');
+    const recordForm = document.getElementById('record-form');
+    const blobFileInput = document.getElementById('blob-file');
+
+    startBtn.addEventListener('click', async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+
+            mediaRecorder.ondataavailable = event => {
+                if (event.data.size > 0) {
+                    audioChunks.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                const audioUrl = URL.createObjectURL(audioBlob);
+                audioPlayback.src = audioUrl;
+                audioPlayback.classList.remove('d-none');
+
+                // Create a File from Blob and attach to form
+                const file = new File([audioBlob], "recorded_speech_" + Date.now() + ".webm", { type: 'audio/webm', lastModified: new Date().getTime() });
+
+                // Use DataTransfer to set file input
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                blobFileInput.files = dataTransfer.files;
+
+                recordForm.classList.remove('d-none');
+                audioChunks = []; // reset
+            };
+
+            mediaRecorder.start();
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+        } catch (err) {
+            alert('Cannot access microphone: ' + err);
+        }
+    });
+
+    stopBtn.addEventListener('click', () => {
+        mediaRecorder.stop();
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+        // Stop all audio tracks to release microphone
+        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+    });
+</script>
+{% endblock %}
