@@ -1,34 +1,95 @@
 import os
+import wave
 import math
+import tempfile
 import numpy as np
 import librosa
 import speech_recognition as sr
 from pydub import AudioSegment
 import imageio_ffmpeg
 
-# Set ffmpeg path
+# Set ffmpeg path for pydub
 AudioSegment.converter = imageio_ffmpeg.get_ffmpeg_exe()
 
 FILLER_WORDS = ['um', 'uh', 'like', 'you know', 'so', 'actually', 'basically', 'literally', 'right', 'well']
+
+# Audio formats that need conversion to WAV before processing
+SUPPORTED_INPUT_FORMATS = ['.wav', '.weba', '.webm', '.mp3', '.ogg', '.flac', '.m4a', '.aac', '.mp4']
 
 
 class SpeechAnalyzer:
 
     def __init__(self, file_path):
         self.file_path = file_path
+        self._converted_file = None  # Track temporary converted file for cleanup
         self.wav_path = self._convert_to_wav()
 
     def _convert_to_wav(self):
-        """Convert input file to WAV."""
-        base, ext = os.path.splitext(self.file_path)
-        wav_path = base + ".wav"
+        """
+        Convert input audio file (e.g. .weba, .webm, .mp3, .ogg) to a valid
+        mono 16 kHz WAV file using pydub + ffmpeg, then validate with the wave module.
 
-        if not os.path.exists(wav_path):
+        If the input is already a valid .wav file, it is still re-exported to
+        guarantee the format matches what SpeechRecognition and librosa expect.
+        """
+        _, ext = os.path.splitext(self.file_path)
+        ext = ext.lower()
+
+        if ext not in SUPPORTED_INPUT_FORMATS:
+            raise ValueError(
+                f"Unsupported audio format '{ext}'. "
+                f"Supported formats: {', '.join(SUPPORTED_INPUT_FORMATS)}"
+            )
+
+        # Build output path next to the original file
+        base, _ = os.path.splitext(self.file_path)
+        wav_path = base + "_converted.wav"
+
+        # Always convert to ensure consistent WAV format (mono, 16 kHz, PCM)
+        try:
+            print(f"[SpeechAnalyzer] Converting '{os.path.basename(self.file_path)}' ({ext}) → WAV …")
             audio = AudioSegment.from_file(self.file_path)
-            audio = audio.set_channels(1).set_frame_rate(16000)
+            audio = audio.set_channels(1).set_frame_rate(16000).set_sample_width(2)  # 16-bit PCM
             audio.export(wav_path, format="wav")
+            print(f"[SpeechAnalyzer] Conversion complete → '{os.path.basename(wav_path)}'")
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to convert '{os.path.basename(self.file_path)}' to WAV: {e}"
+            ) from e
 
+        # Validate the converted file using the wave module
+        try:
+            with wave.open(wav_path, 'rb') as wf:
+                channels = wf.getnchannels()
+                sample_width = wf.getsampwidth()
+                frame_rate = wf.getframerate()
+                n_frames = wf.getnframes()
+                print(
+                    f"[SpeechAnalyzer] WAV validated — "
+                    f"channels={channels}, sample_width={sample_width}, "
+                    f"frame_rate={frame_rate}, frames={n_frames}"
+                )
+                if n_frames == 0:
+                    raise RuntimeError("Converted WAV file has 0 frames — the input audio may be empty.")
+        except wave.Error as e:
+            raise RuntimeError(
+                f"Converted file is not a valid WAV: {e}"
+            ) from e
+
+        self._converted_file = wav_path  # Mark for cleanup later
         return wav_path
+
+    def cleanup(self):
+        """Remove the temporary converted WAV file if it exists."""
+        if self._converted_file and os.path.exists(self._converted_file):
+            try:
+                os.remove(self._converted_file)
+                print(f"[SpeechAnalyzer] Cleaned up temporary file: {os.path.basename(self._converted_file)}")
+            except OSError:
+                pass
+
+    def __del__(self):
+        self.cleanup()
 
     def analyze(self):
         """Run full analysis."""

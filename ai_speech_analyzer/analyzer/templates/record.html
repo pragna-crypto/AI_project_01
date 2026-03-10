@@ -1,6 +1,16 @@
 {% extends 'base.html' %}
 
 {% block content %}
+<!-- Loading Overlay -->
+<div id="loading-overlay" class="d-none position-fixed top-0 start-0 w-100 h-100 bg-white"
+    style="z-index: 1050; opacity: 0.9;">
+    <div class="d-flex justify-content-center align-items-center h-100 flex-column">
+        <div class="spinner-border text-primary" style="width: 5rem; height: 5rem;" role="status"></div>
+        <h3 class="mt-4">Analyzing your speech...</h3>
+        <p class="text-muted">This may take a few moments. Please do not close or refresh the page.</p>
+    </div>
+</div>
+
 <div class="row justify-content-center">
     <div class="col-md-8">
         <div class="card shadow">
@@ -108,6 +118,16 @@
         stopBtn.disabled = true;
         // Stop all audio tracks to release microphone
         mediaRecorder.stream.getTracks().forEach(track => track.stop());
+    });
+
+    // Show loading overlay when any form is submitted
+    document.querySelectorAll('form').forEach(form => {
+        form.addEventListener('submit', () => {
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay) {
+                overlay.classList.remove('d-none');
+            }
+        });
     });
 </script>
 {% endblock %}

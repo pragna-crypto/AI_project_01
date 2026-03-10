@@ -14,6 +14,8 @@ def record_speech(request):
             analysis = form.save()
             # If javascript MediaRecorder submits a file, it's captured here
             return redirect('analyze_speech', pk=analysis.pk)
+        else:
+            print("Form errors:", form.errors)
     else:
         form = UploadSpeechForm()
     
@@ -35,9 +37,12 @@ def analyze_speech(request, pk):
         if not os.path.exists(file_path):
             print("File not found:",file_path)
             return redirect('results_dashboard', pk=pk)
-        analyzer = speechAnalyzer(file_path)
+        analyzer = SpeechAnalyzer(file_path)
         
         results = analyzer.analyze()
+        
+        # Clean up temporary converted WAV file
+        analyzer.cleanup()
         
         # Save results
         analysis.transcript = results.get('transcript',"")
@@ -52,7 +57,9 @@ def analyze_speech(request, pk):
         
         return redirect('results_dashboard', pk=pk)
     except Exception as e:
+        import traceback
         print(f"Error analyzing speech: {e}")
+        traceback.print_exc()
         # In a real app we'd show an error message. For demo, just redirect to results (empty or partial).
         return redirect('results_dashboard', pk=pk)
 
