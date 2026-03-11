@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Text to Speech WAV Download</title>
+</head>
+<body style="font-family:Arial;text-align:center;margin-top:100px;">
+
+<h2>Text to Speech Download (.wav)</h2>
+
+<textarea id="text" rows="5" cols="40" placeholder="Type something..."></textarea>
+<br><br>
+
+<button onclick="speakAndDownload()">Speak & Download</button>
+
+<script>
+async function speakAndDownload() {
+
+let text = document.getElementById("text").value;
+
+const utterance = new SpeechSynthesisUtterance(text);
+
+const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
+const mediaRecorder = new MediaRecorder(stream);
+let chunks = [];
+
+mediaRecorder.ondataavailable = e => chunks.push(e.data);
+
+mediaRecorder.onstop = e => {
+    const blob = new Blob(chunks,{type:"audio/wav"});
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "speech.wav";
+    a.click();
+};
+
+mediaRecorder.start();
+
+speechSynthesis.speak(utterance);
+
+utterance.onend = () => {
+    mediaRecorder.stop();
+};
+
+}
+</script>
+
+</body>
+</html>

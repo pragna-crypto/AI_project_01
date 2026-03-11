@@ -1,20 +1,44 @@
 import os
+import re
 import wave
 import math
-import tempfile
+import subprocess
 import numpy as np
 import librosa
 import speech_recognition as sr
 from pydub import AudioSegment
 import imageio_ffmpeg
 
-# Set ffmpeg path for pydub
-AudioSegment.converter = imageio_ffmpeg.get_ffmpeg_exe()
+# Get the ffmpeg executable path from imageio_ffmpeg
+_FFMPEG_EXE = imageio_ffmpeg.get_ffmpeg_exe()
+
+# Add the ffmpeg binary directory to PATH so pydub can find it for all subprocess calls.
+# Without this, pydub raises [WinError 2] on Windows when trying to run ffmpeg.
+_ffmpeg_dir = os.path.dirname(_FFMPEG_EXE)
+if _ffmpeg_dir not in os.environ.get('PATH', ''):
+    os.environ['PATH'] = _ffmpeg_dir + os.pathsep + os.environ.get('PATH', '')
+
+# Set BOTH converter and ffprobe for pydub.
+AudioSegment.converter = _FFMPEG_EXE
+AudioSegment.ffprobe = _FFMPEG_EXE
 
 FILLER_WORDS = ['um', 'uh', 'like', 'you know', 'so', 'actually', 'basically', 'literally', 'right', 'well']
 
 # Audio formats that need conversion to WAV before processing
 SUPPORTED_INPUT_FORMATS = ['.wav', '.weba', '.webm', '.mp3', '.ogg', '.flac', '.m4a', '.aac', '.mp4']
+
+# Mapping from file extension to the format string pydub/ffmpeg expects
+_EXT_TO_FORMAT = {
+    '.wav': 'wav',
+    '.weba': 'webm',
+    '.webm': 'webm',
+    '.mp3': 'mp3',
+    '.ogg': 'ogg',
+    '.flac': 'flac',
+    '.m4a': 'mp4',
+    '.aac': 'aac',
+    '.mp4': 'mp4',
+}
 
 
 class SpeechAnalyzer:
@@ -45,17 +69,48 @@ class SpeechAnalyzer:
         base, _ = os.path.splitext(self.file_path)
         wav_path = base + "_converted.wav"
 
-        # Always convert to ensure consistent WAV format (mono, 16 kHz, PCM)
+        # Determine the input format hint for pydub/ffmpeg
+        input_format = _EXT_TO_FORMAT.get(ext)
+
+        # --- Primary method: pydub with explicit format hint ---
+        converted = False
+        pydub_error = None
         try:
-            print(f"[SpeechAnalyzer] Converting '{os.path.basename(self.file_path)}' ({ext}) → WAV …")
-            audio = AudioSegment.from_file(self.file_path)
+            print(f"[SpeechAnalyzer] Converting '{os.path.basename(self.file_path)}' ({ext}) -> WAV via pydub...")
+            audio = AudioSegment.from_file(self.file_path, format=input_format)
             audio = audio.set_channels(1).set_frame_rate(16000).set_sample_width(2)  # 16-bit PCM
             audio.export(wav_path, format="wav")
-            print(f"[SpeechAnalyzer] Conversion complete → '{os.path.basename(wav_path)}'")
+            converted = True
+            print(f"[SpeechAnalyzer] Conversion complete -> '{os.path.basename(wav_path)}'")
         except Exception as e:
-            raise RuntimeError(
-                f"Failed to convert '{os.path.basename(self.file_path)}' to WAV: {e}"
-            ) from e
+            pydub_error = e
+            print(f"[SpeechAnalyzer] pydub conversion failed: {e}")
+
+        # --- Fallback method: call ffmpeg directly via subprocess ---
+        if not converted:
+            try:
+                print(f"[SpeechAnalyzer] Retrying with direct ffmpeg subprocess...")
+                cmd = [
+                    _FFMPEG_EXE,
+                    '-y',               # overwrite output
+                    '-i', self.file_path,
+                    '-ac', '1',         # mono
+                    '-ar', '16000',     # 16 kHz
+                    '-sample_fmt', 's16',  # 16-bit PCM
+                    wav_path,
+                ]
+                result = subprocess.run(
+                    cmd, capture_output=True, text=True, timeout=120
+                )
+                if result.returncode != 0:
+                    raise RuntimeError(f"ffmpeg exited with code {result.returncode}: {result.stderr[-500:]}")
+                converted = True
+                print(f"[SpeechAnalyzer] Direct ffmpeg conversion complete -> '{os.path.basename(wav_path)}'")
+            except Exception as e2:
+                raise RuntimeError(
+                    f"Failed to convert '{os.path.basename(self.file_path)}' to WAV. "
+                    f"pydub error: {pydub_error}  |  ffmpeg error: {e2}"
+                ) from e2
 
         # Validate the converted file using the wave module
         try:
@@ -94,16 +149,24 @@ class SpeechAnalyzer:
     def analyze(self):
         """Run full analysis."""
         transcript = self._transcribe()
+        print(f"[SpeechAnalyzer] Transcript: {repr(transcript[:200]) if transcript else '(empty)'}")
 
         speed_wpm = self._calculate_speed(transcript)
+        print(f"[SpeechAnalyzer] Speech speed: {speed_wpm} WPM")
+
         filler_count = self._count_fillers(transcript)
+        print(f"[SpeechAnalyzer] Filler words found: {filler_count}")
 
         pause_count = self._detect_pauses()
+        print(f"[SpeechAnalyzer] Pauses detected: {pause_count}")
+
         voice_stability = self._calculate_stability()
+        print(f"[SpeechAnalyzer] Voice stability: {voice_stability}")
 
         scores = self._calculate_scores(
             speed_wpm, filler_count, pause_count, voice_stability
         )
+        print(f"[SpeechAnalyzer] Scores: {scores}")
 
         return {
             "transcript": transcript,
@@ -144,27 +207,49 @@ class SpeechAnalyzer:
         return round(wpm, 2)
 
     def _count_fillers(self, transcript):
-        """Count filler words."""
+        """Count filler words using word-boundary matching."""
         if not transcript:
             return 0
 
         transcript_lower = transcript.lower()
-        count = sum(transcript_lower.count(word) for word in FILLER_WORDS)
+        count = 0
+        for word in FILLER_WORDS:
+            # Use regex word boundaries so 'well' doesn't match inside 'farewell'
+            pattern = r'\b' + re.escape(word) + r'\b'
+            matches = re.findall(pattern, transcript_lower)
+            if matches:
+                print(f"[SpeechAnalyzer]   Filler '{word}' found {len(matches)} time(s)")
+            count += len(matches)
 
         return count
 
     def _detect_pauses(self):
-        """Detect pauses in speech."""
+        """Detect pauses in speech based on silence gaps."""
         try:
             y, sample_rate = librosa.load(self.wav_path, sr=None)
+            duration = len(y) / sample_rate
+            print(f"[SpeechAnalyzer] Audio loaded: {duration:.2f}s, sample_rate={sample_rate}")
 
-            intervals = librosa.effects.split(y, top_db=30)
+            # Use top_db=20 for better sensitivity to pauses
+            # (lower value = more sensitive to quieter sounds = more pauses detected)
+            intervals = librosa.effects.split(y, top_db=20)
+            print(f"[SpeechAnalyzer] Speech intervals found: {len(intervals)}")
 
-            pause_count = max(0, len(intervals) - 1)
+            # Count gaps between speech intervals that are >= 0.3 seconds
+            pause_count = 0
+            min_pause_duration = 0.3  # seconds
+            for i in range(1, len(intervals)):
+                gap_start = intervals[i - 1][1]  # end of previous speech
+                gap_end = intervals[i][0]          # start of next speech
+                gap_duration = (gap_end - gap_start) / sample_rate
+                if gap_duration >= min_pause_duration:
+                    pause_count += 1
 
+            print(f"[SpeechAnalyzer] Pauses >= {min_pause_duration}s: {pause_count}")
             return pause_count
 
-        except Exception:
+        except Exception as e:
+            print(f"[SpeechAnalyzer] Pause detection error: {e}")
             return 0
 
     def _calculate_stability(self):

@@ -1,0 +1,51 @@
+==================================================
+MP3 TEST
+==================================================
+[SpeechAnalyzer] Converting 'mp3_44100Hz_320kbps_stereo.mp3' (.mp3) -> WAV via pydub...
+[SpeechAnalyzer] pydub conversion failed: [WinError 2] The system cannot find the file specified
+[SpeechAnalyzer] Retrying with direct ffmpeg subprocess...
+[SpeechAnalyzer] Direct ffmpeg conversion complete -> 'mp3_44100Hz_320kbps_stereo_converted.wav'
+[SpeechAnalyzer] WAV validated — channels=1, sample_width=2, frame_rate=16000, frames=116000
+[SpeechAnalyzer] Transcript: 'you are listening to a sample MP3 audio file provided by sample files.com'
+[SpeechAnalyzer] Speech speed: 107.59 WPM
+[SpeechAnalyzer] Filler words found: 0
+[SpeechAnalyzer] Audio loaded: 7.25s, sample_rate=16000
+[SpeechAnalyzer] Speech intervals found: 6
+[SpeechAnalyzer] Pauses >= 0.3s: 1
+[SpeechAnalyzer] Pauses detected: 1
+[SpeechAnalyzer] Voice stability: 86.8499984741211
+[SpeechAnalyzer] Scores: {'speed': 20, 'filler': 25, 'pause': 25, 'stability': np.float32(21.71), 'total': np.float32(91.71)}
+  transcript: 'you are listening to a sample MP3 audio file provided by sample files.com'
+  speech_speed: 107.59
+  filler_word_count: 0
+  pause_count: 1
+  voice_stability: 86.8499984741211
+  scores: {'speed': 20, 'filler': 25, 'pause': 25, 'stability': np.float32(21.71), 'total': np.float32(91.71)}
+  confidence_score: 91.70999908447266
+[SpeechAnalyzer] Cleaned up temporary file: mp3_44100Hz_320kbps_stereo_converted.wav
+MP3 TEST: PASSED
+
+==================================================
+WAV TEST
+==================================================
+[SpeechAnalyzer] Converting 'recordvoice_1773126152109.wav' (.wav) -> WAV via pydub...
+[SpeechAnalyzer] Conversion complete -> 'recordvoice_1773126152109_converted.wav'
+[SpeechAnalyzer] WAV validated — channels=1, sample_width=2, frame_rate=16000, frames=119040
+[SpeechAnalyzer] Transcript: 'hi my name is Gokul and am I talking to myself'
+[SpeechAnalyzer] Speech speed: 88.71 WPM
+[SpeechAnalyzer] Filler words found: 0
+[SpeechAnalyzer] Audio loaded: 7.44s, sample_rate=16000
+[SpeechAnalyzer] Speech intervals found: 1
+[SpeechAnalyzer] Pauses >= 0.3s: 0
+[SpeechAnalyzer] Pauses detected: 0
+[SpeechAnalyzer] Voice stability: 99.30000305175781
+[SpeechAnalyzer] Scores: {'speed': 10, 'filler': 25, 'pause': 20, 'stability': np.float32(24.82), 'total': np.float32(79.82)}
+  transcript: 'hi my name is Gokul and am I talking to myself'
+  speech_speed: 88.71
+  filler_word_count: 0
+  pause_count: 0
+  voice_stability: 99.30000305175781
+  scores: {'speed': 10, 'filler': 25, 'pause': 20, 'stability': np.float32(24.82), 'total': np.float32(79.82)}
+  confidence_score: 79.81999969482422
+[SpeechAnalyzer] Cleaned up temporary file: recordvoice_1773126152109_converted.wav
+WAV TEST: PASSED
